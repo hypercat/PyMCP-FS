@@ -42,14 +42,14 @@ It's inspired by this [example typescript implementation](https://github.com/mod
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/your-mcp-server-repo.git
-    cd your-mcp-server-repo
+    git clone https://github.com/hypercat/PyMCP-FS.git
+    cd PyMCP-FS
     ```
 
-2.  **Install `fastmcp`:**
+2.  **Initialize project with `uv`:**
 
     ```bash
-    pip install fastmcp
+    uv pip install -r pyproject.toml
     ```
 
 -----
@@ -75,17 +75,17 @@ python3 main.py -d /path/to/allowed/dir1 /path/to/another/allowed/dir2 --log-lev
 To allow the server access to your home directory's `projects` folder and a temporary `data` folder:
 
 ```bash
-python3 main.py -d ~/projects /tmp/data --log-level DEBUG --log-file mcp_debug.log
+uv run main.py -d ~/projects /tmp/data --log-level DEBUG --log-file mcp_debug.log
 ```
 
 Once running, the server will listen for MCP messages on its standard input (`stdin`) and respond on its standard output (`stdout`).
 
 ### Testing the Server with `test_mcp_server.py`
 
-The `test_mcp_server.py` script is a crucial utility for verifying the server's initialization and basic functionality. It launches the `main.py` server as a subprocess, sends an `initialize` MCP message, and captures the server's output and logs.
+The `test_mcp_server.py` script is a utility for verifying the server's initialization and basic functionality. It launches the `main.py` server as a subprocess, sends an `initialize` MCP message, and captures the server's output and logs.
 
 ```bash
-python3 test_mcp_server.py
+uv run test_mcp_server.py
 ```
 
 This script will:
