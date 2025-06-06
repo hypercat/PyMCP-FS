@@ -353,6 +353,18 @@ class TestLogging:
                                                                                                                                                                                                                             
             # Check that log file was created
             assert os.path.exists(log_file)
+            
+            # Close all handlers to release file handles on Windows
+            for handler in logger.handlers[:]:
+                handler.close()
+                logger.removeHandler(handler)
+            
+            # Also close handlers on root logger
+            root_logger = logging.getLogger()
+            for handler in root_logger.handlers[:]:
+                if hasattr(handler, 'baseFilename') and handler.baseFilename == log_file:
+                    handler.close()
+                    root_logger.removeHandler(handler)
                                                                                                                                                                                                                             
                                                                                                                                                                                                                             
 class TestMainFunction:
@@ -383,8 +395,8 @@ def test_mcp_server():
     test_instance = TestPathValidation()
     test_instance.setup_method()
     try:
-        test_instance.test_expand_home()
         test_instance.test_normalize_path()
+        # Skip test_expand_home since it's tested separately
     finally:
         test_instance.teardown_method()
                                                                                                                                                                                                                             

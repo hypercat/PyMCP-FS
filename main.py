@@ -63,8 +63,10 @@ logger = logging.getLogger(__name__)
 
 def expand_home(filepath: str) -> str:
     """Expand ~ to home directory"""
-    if filepath.startswith('~/') or filepath == '~':
-        return os.path.join(os.path.expanduser('~'), filepath[1:].lstrip('/'))
+    if filepath == '~':
+        return os.path.expanduser('~')
+    elif filepath.startswith('~/'):
+        return os.path.join(os.path.expanduser('~'), filepath[2:])
     return filepath
 
 def normalize_path(p: str) -> str:
