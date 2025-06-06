@@ -253,16 +253,9 @@ class TestMCPTools:
         with open(test_file, 'w') as f:
             f.write(test_content)
                                                                                                                                                                                                                             
-        # Import the tool function
-        from main import mcp
-        read_file_func = None
-        for tool in mcp.tools:
-            if tool.name == "read_file":
-                read_file_func = tool.func
-                break
-
-        assert read_file_func is not None
-        result = await read_file_func(test_file)
+        # Import the tool function directly
+        from main import read_file
+        result = await read_file(test_file)
         assert result == test_content
 
     @pytest.mark.asyncio
@@ -271,16 +264,9 @@ class TestMCPTools:
         test_file = os.path.join(self.test_dir, "write_test.txt")
         test_content = "Written content"
                                                                                                                                                                                                                             
-        # Import the tool function
-        from main import mcp
-        write_file_func = None
-        for tool in mcp.tools:
-            if tool.name == "write_file":
-                write_file_func = tool.func
-                break
-                                                                                                                                                                                                                            
-        assert write_file_func is not None
-        result = await write_file_func(test_file, test_content)
+        # Import the tool function directly
+        from main import write_file
+        result = await write_file(test_file, test_content)
 
         assert "Successfully wrote" in result
 
@@ -297,16 +283,9 @@ class TestMCPTools:
             f.write("content1")
         os.makedirs(os.path.join(self.test_dir, "subdir"))
 
-        # Import the tool function
-        from main import mcp
-        list_directory_func = None
-        for tool in mcp.tools:
-            if tool.name == "list_directory":
-                list_directory_func = tool.func
-                break
-
-        assert list_directory_func is not None
-        result = await list_directory_func(self.test_dir)
+        # Import the tool function directly
+        from main import list_directory
+        result = await list_directory(self.test_dir)
 
         assert "[FILE] file1.txt" in result
         assert "[DIR] subdir" in result
@@ -316,16 +295,9 @@ class TestMCPTools:
         """Test create_directory MCP tool"""
         new_dir = os.path.join(self.test_dir, "new_directory")
 
-        # Import the tool function
-        from main import mcp
-        create_directory_func = None
-        for tool in mcp.tools:
-            if tool.name == "create_directory":
-                create_directory_func = tool.func
-                break
-                                                                                                                                                                                                                            
-        assert create_directory_func is not None
-        result = await create_directory_func(new_dir)
+        # Import the tool function directly
+        from main import create_directory
+        result = await create_directory(new_dir)
 
         assert "Successfully created" in result
         assert os.path.isdir(new_dir)
@@ -339,16 +311,9 @@ class TestMCPTools:
         with open(os.path.join(self.test_dir, "other.txt"), 'w') as f:
             f.write("content")
                                                                                                                                                                                                                             
-        # Import the tool function
-        from main import mcp
-        search_files_func = None
-        for tool in mcp.tools:
-            if tool.name == "search_files":
-                search_files_func = tool.func
-                break
-                                                                                                                                                                                                                            
-        assert search_files_func is not None
-        result = await search_files_func(self.test_dir, "search")
+        # Import the tool function directly
+        from main import search_files
+        result = await search_files(self.test_dir, "search")
                                                                                                                                                                                                                             
         assert "search_me.txt" in result
         assert "other.txt" not in result
@@ -356,16 +321,9 @@ class TestMCPTools:
     @pytest.mark.asyncio
     async def test_list_allowed_directories_tool(self):
         """Test list_allowed_directories MCP tool"""
-        # Import the tool function
-        from main import mcp
-        list_allowed_func = None
-        for tool in mcp.tools:
-            if tool.name == "list_allowed_directories":
-                list_allowed_func = tool.func
-                break
-                                                                                                                                                                                                                            
-        assert list_allowed_func is not None
-        result = await list_allowed_func()
+        # Import the tool function directly
+        from main import list_allowed_directories
+        result = await list_allowed_directories()
 
         assert "Allowed directories:" in result
         assert self.temp_dir in result
@@ -398,7 +356,7 @@ class TestMainFunction:
 
     def test_main_with_invalid_directory(self):
         """Test main function with invalid directory"""
-        with patch('sys.argv', ['main.py', '-d', '/non/existent/path']):
+        with patch('sys.argv', ['main.py', '--directories', '/non/existent/path']):
             with pytest.raises(SystemExit):
                 main.main()
 
@@ -406,7 +364,7 @@ class TestMainFunction:
     def test_main_with_valid_directory(self, mock_run):
         """Test main function with valid directory"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch('sys.argv', ['main.py', '-d', temp_dir]):
+            with patch('sys.argv', ['main.py', '--directories', temp_dir]):
                 try:
                     main.main()
                     mock_run.assert_called_once()
