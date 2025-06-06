@@ -11,6 +11,10 @@ from unittest.mock import patch, MagicMock
 import sys
 
 # Import the main module
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import main
 from main import (
     validate_path, expand_home, normalize_path, validate_allowed_directories,
