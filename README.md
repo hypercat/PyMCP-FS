@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/hypercat-pymcp-fs-badge.png)](https://mseep.ai/app/hypercat-pymcp-fs)
+
 # Python (MCP) Filesystem Server
 
 This repository contains a robust Python-based **Model Context Protocol (MCP) Filesystem Server**. It enables AI models and applications to securely interact with the host system's file directories through a defined set of tools, allowing for operations like reading, writing, moving, and listing files and directories.
