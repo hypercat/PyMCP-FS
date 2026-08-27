@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
 from main import (
     validate_path, expand_home, normalize_path, validate_allowed_directories,
+    canonical_path,
     apply_file_edits, EditOperation, get_file_stats, build_directory_tree,
     create_unified_diff, normalize_line_endings, setup_logging
 )
@@ -33,7 +34,7 @@ class TestPathValidation:
         os.makedirs(self.allowed_dir, exist_ok=True)
 
         # Set allowed directories globally
-        main.allowed_directories = [normalize_path(os.path.abspath(self.allowed_dir))]
+        main.allowed_directories = [canonical_path(self.allowed_dir)]
 
     def teardown_method(self):
         """Cleanup nach jedem Test"""
@@ -118,7 +119,7 @@ class TestFileOperations:
         os.makedirs(self.test_dir, exist_ok=True)
 
         # Set allowed directories globally
-        main.allowed_directories = [normalize_path(os.path.abspath(self.temp_dir))]
+        main.allowed_directories = [canonical_path(self.temp_dir)]
 
     def teardown_method(self):
         """Cleanup nach jedem Test"""
@@ -242,7 +243,7 @@ class TestMCPTools:
         os.makedirs(self.test_dir, exist_ok=True)
 
         # Set allowed directories globally
-        main.allowed_directories = [normalize_path(os.path.abspath(self.temp_dir))]
+        main.allowed_directories = [canonical_path(self.temp_dir)]
 
     def teardown_method(self):
         """Cleanup nach jedem Test"""
@@ -331,7 +332,7 @@ class TestMCPTools:
         result = await list_allowed_directories()
 
         assert "Allowed directories:" in result
-        assert self.temp_dir in result
+        assert canonical_path(self.temp_dir) in result
 
                                                                                                                                                                                                                             
 class TestLogging:

@@ -73,6 +73,39 @@ def normalize_path(p: str) -> str:
     """Normalize path consistently"""
     return os.path.normpath(p)
 
+def is_within_allowed(path: str, allowed: List[str]) -> bool:
+    """Check whether a path is an allowed directory itself or a descendant of one.
+
+    Compares on path-component boundaries rather than by string prefix, so a
+    sibling directory such as /home/u/project-backup is not treated as being
+    inside the allowed directory /home/u/project.
+
+    Args:
+        path (str): Absolute, normalized path to test
+        allowed (List[str]): Absolute, normalized allowed directories
+
+    Returns:
+        bool: True if path is contained in one of the allowed directories
+    """
+    candidate = Path(path)
+    return any(candidate.is_relative_to(Path(d)) for d in allowed)
+
+def canonical_path(p: str) -> str:
+    """Resolve a path to the canonical form used for containment checks.
+
+    Expands ~, makes the path absolute, then resolves symlinks and Windows 8.3
+    short names via realpath. Allowed directories and requested paths are both
+    reduced to this form, so a comparison cannot be defeated, or wrongly
+    refused, by two different spellings of the same location.
+
+    Args:
+        p (str): Path to canonicalize
+
+    Returns:
+        str: Absolute, symlink-resolved, normalized path
+    """
+    return normalize_path(os.path.realpath(os.path.abspath(expand_home(p))))
+
 def validate_allowed_directories(allowed_directories: List[str]):
     for _, dir_arg in enumerate(allowed_directories):
         expanded_dir = expand_home(dir_arg)
@@ -108,41 +141,37 @@ allowed_directories: List[str] = []
 
 async def validate_path(requested_path: str) -> str:
     """Validate that a path is within allowed directories
-    
+
+    The path is resolved to its canonical form before the containment check,
+    so symlinks, Windows 8.3 short names and other aliases collapse to a
+    single representation. allowed_directories is canonicalized the same way,
+    keeping both sides of the comparison in the same form: an alias can
+    neither be used to escape the allowed tree, nor cause a legitimate path
+    inside it to be rejected.
+
     Args:
         requested_path (str): Path to validate
-    
+
     Returns:
-        str: Validated path
+        str: The validated, fully resolved path
+
+    Raises:
+        ValueError: If the path resolves outside every allowed directory
     """
-    expanded_path = expand_home(requested_path)
-    absolute = os.path.abspath(expanded_path)
-    normalized_requested = normalize_path(absolute)
-    
-    is_allowed = any(normalized_requested.startswith(dir) for dir in allowed_directories)
-    if not is_allowed:
-        raise ValueError(f"Access denied - path outside allowed directories: {absolute} not in {', '.join(allowed_directories)}")
-    
-    # Handle symlinks by checking their real path
-    try:
-        real_path = os.path.realpath(absolute)
-        normalized_real = normalize_path(real_path)
-        is_real_path_allowed = any(normalized_real.startswith(dir) for dir in allowed_directories)
-        if not is_real_path_allowed:
-            raise ValueError("Access denied - symlink target outside allowed directories")
-        return real_path
-    except OSError:
-        # For new files that don't exist yet, verify parent directory
-        parent_dir = os.path.dirname(absolute)
-        try:
-            real_parent_path = os.path.realpath(parent_dir)
-            normalized_parent = normalize_path(real_parent_path)
-            is_parent_allowed = any(normalized_parent.startswith(dir) for dir in allowed_directories)
-            if not is_parent_allowed:
-                raise ValueError("Access denied - parent directory outside allowed directories")
-            return absolute
-        except OSError:
-            raise ValueError(f"Parent directory does not exist: {parent_dir}")
+    absolute = os.path.abspath(expand_home(requested_path))
+
+    # realpath resolves symlinks and short names. Its default strict=False also
+    # covers files that do not exist yet: the existing parent is resolved and
+    # the remainder appended, so new-file targets are checked correctly.
+    real_path = os.path.realpath(absolute)
+
+    if not is_within_allowed(normalize_path(real_path), allowed_directories):
+        raise ValueError(
+            f"Access denied - path outside allowed directories: {absolute} "
+            f"not in {', '.join(allowed_directories)}"
+        )
+
+    return real_path
 
 def normalize_line_endings(text: str) -> str:
     """Normalize line endings to \n"""
@@ -652,7 +681,7 @@ def main():
         logger.info(f"Command line args: {sys.argv}")
         
         logger.info("Processing allowed directories...")
-        allowed_directories = [normalize_path(os.path.abspath(expand_home(dir))) for dir in args.directories]
+        allowed_directories = [canonical_path(dir) for dir in args.directories]
         logger.info(f"Allowed directories (normalized): {allowed_directories}")
         
         logger.info("Validating directories...")
