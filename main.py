@@ -6,7 +6,7 @@ import sys
 import json
 import shutil
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Set, Union
 from dataclasses import dataclass
 from datetime import datetime
 import fnmatch
@@ -355,16 +355,31 @@ async def _search_files_impl(root_path: str, pattern: str, exclude_patterns: Opt
     
     return results
 
-async def build_directory_tree(current_path: str) -> List[TreeEntry]:
+async def build_directory_tree(current_path: str, _visited: Optional[Set[str]] = None) -> List[TreeEntry]:
     """Build a recursive tree structure of directories and files
-    
+
+    os.path.isdir follows symlinks, so a link pointing at one of its own
+    ancestors would otherwise recurse until the stack is exhausted. Directories
+    already expanded on the current descent are tracked by resolved path and
+    reported without children instead of being walked again.
+
     Args:
         current_path (str): Current directory to build tree from
-    
+        _visited (Optional[Set[str]]): Resolved directories already expanded,
+            used internally to break symlink cycles
+
     Returns:
         List[TreeEntry]: List of TreeEntry objects representing directories and files
     """
     valid_path = await validate_path(current_path)
+
+    if _visited is None:
+        _visited = set()
+    resolved = normalize_path(os.path.realpath(valid_path))
+    if resolved in _visited:
+        return []
+    _visited.add(resolved)
+
     entries = []
     
     try:
@@ -375,7 +390,7 @@ async def build_directory_tree(current_path: str) -> List[TreeEntry]:
                 entry = TreeEntry(
                     name=item,
                     type='directory',
-                    children=await build_directory_tree(item_path)
+                    children=await build_directory_tree(item_path, _visited)
                 )
             else:
                 entry = TreeEntry(
@@ -397,9 +412,10 @@ logger.debug("FastMCP server instance created successfully")
 async def read_file(path: str) -> str:
     """Read the complete contents of a file from the file system.
     
-    Handles various text encodings and provides detailed error messages
-    if the file cannot be read. Use this tool when you need to examine
-    the contents of a single file. Only works within allowed directories.
+    Reads UTF-8 encoded text. Files that are not valid UTF-8, such as
+    binaries, are reported as an error rather than returned as mojibake.
+    Use this tool when you need to examine the contents of a single file.
+    Only works within allowed directories.
 
     Args:
         path (str): Path to the file to read
@@ -410,8 +426,14 @@ async def read_file(path: str) -> str:
     logger.debug(f"read_file called with path: {path}")
     valid_path = await validate_path(path)
     logger.debug(f"Path validated: {valid_path}")
-    with open(valid_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+    try:
+        with open(valid_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except UnicodeDecodeError as e:
+        raise ValueError(
+            f"Cannot read {path} as UTF-8 text ({e.reason} at byte {e.start}). "
+            "This tool reads text files only."
+        ) from e
     logger.debug(f"File read successfully, content length: {len(content)}")
     return content
 
@@ -668,7 +690,8 @@ def main():
     
     # Parse command line arguments properly
     parser = argparse.ArgumentParser(description="Secure MCP Filesystem Server")
-    parser.add_argument("-d", "--directories", nargs="+", help="List of allowed directories")
+    parser.add_argument("-d", "--directories", nargs="+", required=True,
+                        help="List of allowed directories")
     parser.add_argument("--log-file", type=str, help="Optional log file path")
     parser.add_argument("--log-level", type=str, default="INFO", 
                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
