@@ -19,7 +19,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import main
-from main import is_within_allowed, normalize_path, validate_path
+from main import canonical_path, is_within_allowed, validate_path
 
 
 class TestSiblingPrefixConfinement:
@@ -29,7 +29,7 @@ class TestSiblingPrefixConfinement:
         self.temp_dir = tempfile.mkdtemp()
         self.allowed_dir = os.path.join(self.temp_dir, "allowed")
         os.makedirs(self.allowed_dir, exist_ok=True)
-        main.allowed_directories = [normalize_path(os.path.abspath(self.allowed_dir))]
+        main.allowed_directories = [canonical_path(self.allowed_dir)]
 
     def teardown_method(self):
         if os.path.exists(self.temp_dir):
@@ -78,6 +78,31 @@ class TestSiblingPrefixConfinement:
 
         result = await validate_path(test_file)
         assert os.path.samefile(result, test_file)
+
+    @pytest.mark.asyncio
+    async def test_aliased_allowed_directory_still_permits_access(self):
+        """An allowed directory reached via an alias must still permit its contents.
+
+        Regression: allowed_directories was compared against realpath-resolved
+        request paths without being resolved itself, so any alias for the
+        allowed directory (a symlink, or a Windows 8.3 short name as used by
+        the temp directory on CI runners) denied all legitimate access.
+        """
+        real_dir = os.path.join(self.temp_dir, "real_target")
+        os.makedirs(real_dir, exist_ok=True)
+        link = os.path.join(self.temp_dir, "link_to_target")
+        try:
+            os.symlink(real_dir, link, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("Symlinks not supported on this system")
+
+        main.allowed_directories = [canonical_path(link)]
+        aliased_file = os.path.join(link, "ok.txt")
+        with open(aliased_file, "w") as f:
+            f.write("in-tree content")
+
+        result = await validate_path(aliased_file)
+        assert os.path.samefile(result, aliased_file)
 
 
 class TestIsWithinAllowed:
