@@ -146,3 +146,12 @@ This server provides a solid foundation for filesystem interaction. You can exte
   * **Adding More Tools**: Implement new `@mcp.tool()` functions for other filesystem operations (e.g., `copy_file`, `delete_file`, `checksum_file`).
   * **Integrating with Other Systems**: Modify tools to interact with cloud storage, databases, or version control systems, while still presenting a filesystem-like interface.
   * **Customizing Validation**: Enhance the `validate_path` function with more complex access control rules if needed.
+
+-----
+
+## License
+
+Released under the [BSD Zero Clause License](LICENSE) (0BSD), the most
+permissive license approved by the Open Source Initiative. You may use, modify
+and redistribute this software for any purpose, with no obligation to preserve
+a copyright notice or to ship the license text.
