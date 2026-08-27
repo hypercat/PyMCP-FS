@@ -73,6 +73,23 @@ def normalize_path(p: str) -> str:
     """Normalize path consistently"""
     return os.path.normpath(p)
 
+def is_within_allowed(path: str, allowed: List[str]) -> bool:
+    """Check whether a path is an allowed directory itself or a descendant of one.
+
+    Compares on path-component boundaries rather than by string prefix, so a
+    sibling directory such as /home/u/project-backup is not treated as being
+    inside the allowed directory /home/u/project.
+
+    Args:
+        path (str): Absolute, normalized path to test
+        allowed (List[str]): Absolute, normalized allowed directories
+
+    Returns:
+        bool: True if path is contained in one of the allowed directories
+    """
+    candidate = Path(path)
+    return any(candidate.is_relative_to(Path(d)) for d in allowed)
+
 def validate_allowed_directories(allowed_directories: List[str]):
     for _, dir_arg in enumerate(allowed_directories):
         expanded_dir = expand_home(dir_arg)
@@ -119,7 +136,7 @@ async def validate_path(requested_path: str) -> str:
     absolute = os.path.abspath(expanded_path)
     normalized_requested = normalize_path(absolute)
     
-    is_allowed = any(normalized_requested.startswith(dir) for dir in allowed_directories)
+    is_allowed = is_within_allowed(normalized_requested, allowed_directories)
     if not is_allowed:
         raise ValueError(f"Access denied - path outside allowed directories: {absolute} not in {', '.join(allowed_directories)}")
     
@@ -127,7 +144,7 @@ async def validate_path(requested_path: str) -> str:
     try:
         real_path = os.path.realpath(absolute)
         normalized_real = normalize_path(real_path)
-        is_real_path_allowed = any(normalized_real.startswith(dir) for dir in allowed_directories)
+        is_real_path_allowed = is_within_allowed(normalized_real, allowed_directories)
         if not is_real_path_allowed:
             raise ValueError("Access denied - symlink target outside allowed directories")
         return real_path
@@ -137,7 +154,7 @@ async def validate_path(requested_path: str) -> str:
         try:
             real_parent_path = os.path.realpath(parent_dir)
             normalized_parent = normalize_path(real_parent_path)
-            is_parent_allowed = any(normalized_parent.startswith(dir) for dir in allowed_directories)
+            is_parent_allowed = is_within_allowed(normalized_parent, allowed_directories)
             if not is_parent_allowed:
                 raise ValueError("Access denied - parent directory outside allowed directories")
             return absolute
