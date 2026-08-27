@@ -580,9 +580,14 @@ async def move_file(source: str, destination: str) -> str:
     """
     valid_source_path = await validate_path(source)
     valid_dest_path = await validate_path(destination)
-    
+
+    # shutil.move replaces an existing file without warning, which contradicts
+    # this tool's documented contract and would make the operation destructive.
+    if os.path.exists(valid_dest_path):
+        raise ValueError(f"Destination already exists, refusing to overwrite: {destination}")
+
     os.makedirs(os.path.dirname(valid_dest_path), exist_ok=True)
-    
+
     shutil.move(valid_source_path, valid_dest_path)
     return f"Successfully moved {source} to {destination}"
 
