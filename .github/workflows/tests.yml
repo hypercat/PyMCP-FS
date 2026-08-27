@@ -36,7 +36,7 @@ jobs:
         run: python -m pip install --upgrade pip uv
 
       - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} --with pytest --with pytest-asyncio pytest -q
+        run: uv run --frozen --python ${{ matrix.python-version }} pytest -q
 
   # Single check for branch protection to require. Succeeds only when every
   # matrix job succeeded, so new matrix entries need no protection changes.
